@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- ✏️ EDIT: The browser tab title -->
+  <title>Alex Chen · Portfolio</title>
+
+  <!-- Google Fonts — Space Grotesk (headings) + Inter (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"Space Grotesk"', 'sans-serif'],
+            body:    ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* ================================================================
+       ★  DESIGN TOKENS — tweak these colors to retheme the whole site
+    ================================================================ */
+    :root {
+      --bg:           #050b1a;   /* Page background — very dark navy */
+      --surface:      rgba(13, 31, 60, 0.55);  /* Card / panel fill */
+      --border:       rgba(99, 102, 241, 0.15); /* Subtle indigo border */
+      --violet:       #7c3aed;   /* Aurora color 1 */
+      --cyan:         #06b6d4;   /* Aurora color 2 */
+      --emerald:      #10b981;   /* Aurora color 3 */
+      --accent:       #a78bfa;   /* Primary accent (soft violet) */
+      --text:         #e2e8f0;   /* Body text */
+      --text-muted:   #64748b;   /* Secondary / faded text */
+    }
+
+    /* ================================================================
+       BASE RESET
+    ================================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      line-height: 1.7;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ================================================================
+       AURORA — the floating blob layer (animation JS drives these)
+    ================================================================ */
+    .aurora-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      pointer-events: none;
+      will-change: transform, opacity;
+    }
+
+    /* ================================================================
+       SCROLL-IN FADE  (JS adds .is-visible when element enters screen)
+    ================================================================ */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(28px);
+      transition:
+        opacity  0.75s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .fade-in.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ================================================================
+       GLOW UTILITIES
+    ================================================================ */
+    .glow-text  { text-shadow: 0 0 50px rgba(167, 139, 250, 0.45); }
+    .glow-btn   {
+      box-shadow: 0 0 22px rgba(124, 58, 237, 0.45);
+      transition: box-shadow 0.3s ease, transform 0.2s ease;
+    }
+    .glow-btn:hover {
+      box-shadow: 0 0 40px rgba(124, 58, 237, 0.75);
+      transform: translateY(-2px);
+    }
+
+    /* ================================================================
+       NAVBAR
+    ================================================================ */
+    #navbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      background: rgba(5, 11, 26, 0.72);
+      border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    /* ================================================================
+       SECTION LABEL (small caps above each heading)
+    ================================================================ */
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    /* ================================================================
+       SKILL PILLS
+    ================================================================ */
+    .skill-pill {
+      background: rgba(124, 58, 237, 0.1);
+      border: 1px solid rgba(124, 58, 237, 0.22);
+      color: #cbd5e1;
+      transition: background 0.25s, border-color 0.25s, box-shadow 0.25s, color 0.25s;
+      cursor: default;
+    }
+    .skill-pill:hover {
+      background: rgba(124, 58, 237, 0.22);
+      border-color: rgba(167, 139, 250, 0.5);
+      color: #fff;
+      box-shadow: 0 0 16px rgba(124, 58, 237, 0.3);
+    }
+
+    /* ================================================================
+       TIMELINE
+    ================================================================ */
+    /* Faint grey track — always visible full-height */
+    #timeline-track {
+      position: absolute;
+      left: 19px; top: 6px; bottom: 0; width: 2px;
+      border-radius: 9999px;
+      background: rgba(99, 102, 241, 0.12);
+    }
+    /* Glowing colored fill — height grows via JS */
+    #timeline-fill {
+      position: absolute;
+      top: 0; left: 0; width: 100%;
+      height: 0%;
+      border-radius: 9999px;
+      background: linear-gradient(to bottom, var(--violet), var(--cyan), var(--emerald));
+      box-shadow: 0 0 14px rgba(167, 139, 250, 0.9), 0 0 40px rgba(6, 182, 212, 0.35);
+      transition: height 0.12s linear;
+    }
+    /* Dots on the timeline */
+    .milestone-dot {
+      position: absolute;
+      left: -35px; top: 4px;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #1e1b4b;
+      border: 2px solid rgba(99, 102, 241, 0.4);
+      transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+      z-index: 2;
+    }
+    .milestone-dot.is-lit {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 8px var(--accent), 0 0 22px rgba(167, 139, 250, 0.5);
+    }
+
+    /* ================================================================
+       PROJECT CARDS
+    ================================================================ */
+    .project-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      overflow: hidden;
+      transition: border-color 0.35s, transform 0.35s, box-shadow 0.35s;
+    }
+    .project-card:hover {
+      border-color: rgba(167, 139, 250, 0.4);
+      transform: translateY(-5px);
+      box-shadow: 0 24px 60px rgba(124, 58, 237, 0.2);
+    }
+
+    /* ================================================================
+       CONTACT FORM INPUTS
+    ================================================================ */
+    .form-input {
+      background: rgba(13, 31, 60, 0.8);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 100%;
+      border-radius: 0.75rem;
+      padding: 0.75rem 1rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      transition: border-color 0.25s, box-shadow 0.25s;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: rgba(167, 139, 250, 0.55);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+    }
+    .form-input::placeholder { color: #3f4f69; }
+
+    /* ================================================================
+       STAT CARDS IN ABOUT
+    ================================================================ */
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      text-align: center;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .stat-card:hover {
+      border-color: rgba(167, 139, 250, 0.35);
+      box-shadow: 0 8px 40px rgba(124, 58, 237, 0.15);
+    }
+
+    /* ================================================================
+       SCROLL INDICATOR BOUNCE
+    ================================================================ */
+    @keyframes bounce-gentle {
+      0%, 100% { transform: translateY(0);  }
+      50%       { transform: translateY(8px); }
+    }
+    .scroll-indicator { animation: bounce-gentle 2.4s ease-in-out infinite; }
+
+    /* ================================================================
+       CONTACT SOCIAL LINKS
+    ================================================================ */
+    .contact-link {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      padding: 1rem 1.25rem;
+      border-radius: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s;
+    }
+    .contact-link:hover {
+      border-color: rgba(167, 139, 250, 0.4);
+      box-shadow: 0 8px 30px rgba(124, 58, 237, 0.15);
+      transform: translateX(4px);
+    }
+
+    /* ================================================================
+       ACCESSIBILITY — reduced motion
+    ================================================================ */
+    @media (prefers-reduced-motion: reduce) {
+      .fade-in            { opacity: 1 !important; transform: none !important; transition: none !important; }
+      .aurora-blob        { transition: none !important; }
+      .scroll-indicator   { animation: none !important; }
+      #timeline-fill      { transition: none !important; }
+      .milestone-dot      { transition: none !important; }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ================================================================
+     ★ AURORA BACKGROUND LAYER
+     Decorative only — the scroll animation JS moves these blobs.
+     You don't need to edit this section.
+================================================================ -->
+<div id="aurora-layer" aria-hidden="true" style="position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;">
+  <div id="aurora-1" class="aurora-blob" style="width:750px;height:750px;background:radial-gradient(circle,#7c3aed 0%,transparent 68%);top:-18%;left:-8%;opacity:0.22;"></div>
+  <div id="aurora-2" class="aurora-blob" style="width:620px;height:620px;background:radial-gradient(circle,#06b6d4 0%,transparent 68%);top:20%;right:-12%;opacity:0.18;"></div>
+  <div id="aurora-3" class="aurora-blob" style="width:550px;height:550px;background:radial-gradient(circle,#10b981 0%,transparent 68%);bottom:8%;left:15%;opacity:0.14;"></div>
+  <div id="aurora-4" class="aurora-blob" style="width:420px;height:420px;background:radial-gradient(circle,#7c3aed 0%,transparent 68%);bottom:35%;right:10%;opacity:0.10;"></div>
+</div>
+
+<!-- ================================================================
+     ★ NAVIGATION BAR
+================================================================ -->
+<nav id="navbar">
+  <div style="max-width:72rem;margin:0 auto;padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
+
+    <!-- ✏️ EDIT: Logo / initials shown in the top-left corner -->
+    <a href="#hero" style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:1.1rem;letter-spacing:-0.02em;text-decoration:none;">
+      SS<span style="color:#a78bfa;">.</span>
+    </a>
+
+    <!-- Nav links — desktop only -->
+    <div style="display:none;" id="nav-links" class="md:flex" style="display:flex;align-items:center;gap:2rem;">
+      <!-- ✏️ EDIT: Change the link labels here. Keep the href="#..." matching section IDs below -->
+      <a href="#about"      style="color:#94a3b8;font-size:0.875rem;font-weight:500;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">About</a>
+      <a href="#skills"     style="color:#94a3b8;font-size:0.875rem;font-weight:500;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">Skills</a>
+      <a href="#milestones" style="color:#94a3b8;font-size:0.875rem;font-weight:500;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">Journey</a>
+      <a href="#projects"   style="color:#94a3b8;font-size:0.875rem;font-weight:500;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">Projects</a>
+      <a href="#contact"    style="color:#94a3b8;font-size:0.875rem;font-weight:500;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">Contact</a>
+    </div>
+
+    <!-- ✏️ EDIT: The top-right call-to-action button text -->
+    <a href="#contact" class="glow-btn" style="background:linear-gradient(135deg,#7c3aed,#06b6d4);color:#fff;font-weight:600;font-size:0.875rem;padding:0.5rem 1.2rem;border-radius:9999px;text-decoration:none;">
+      Hire Me
+    </a>
+
+  </div>
+</nav>
+
+<!-- ================================================================
+     ★ MAIN CONTENT — all sections live inside this wrapper
+================================================================ -->
+<div style="position:relative;z-index:1;">
+
+
+  <!-- ==============================================================
+       SECTION 1: HERO
+  ============================================================== -->
+  <section id="hero" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:8rem 1.5rem 4rem;text-align:center;">
+    <div style="max-width:56rem;margin:0 auto;">
+
+      <!-- ✏️ EDIT: The small line above your name -->
+      <p class="section-label fade-in" data-delay="0" style="margin-bottom:1.5rem;">Hello, the world — I'm</p>
+
+      <!-- ✏️ EDIT: YOUR NAME — this is the big headline -->
+      <h1 class="glow-text fade-in" data-delay="80"
+          style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:clamp(3.2rem,10vw,7rem);line-height:1.04;letter-spacing:-0.04em;">
+        Sherzod Shomamatov
+      </h1>
+
+      <!-- ✏️ EDIT: Your role / speciality -->
+      <p class="fade-in" data-delay="160"
+         style="font-family:'Space Grotesk',sans-serif;font-weight:500;color:#a78bfa;font-size:clamp(1.1rem,3vw,1.6rem);margin-top:1rem;">
+        Data & &amp; BI Analyst
+      </p>
+
+      <!-- ✏️ EDIT: One-to-two sentence elevator pitch -->
+      <p class="fade-in" data-delay="240"
+         style="color:#64748b;font-size:1.05rem;max-width:38rem;margin:1.5rem auto 0;line-height:1.8;">
+        Specializing in data-driven decision making with over 1.5 years of experience in product management and market research. I turn complex data, sales reports, and competitor insights into actionable strategies. Based in Tashkent, skilled in Excel, Power BI, and global business.
+      </p>
+
+      <!-- CTA Buttons -->
+      <div class="fade-in" data-delay="320" style="margin-top:2.5rem;display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;">
+        <!-- ✏️ EDIT: Primary button text and link destination -->
+        <a href="#projects" class="glow-btn"
+           style="background:linear-gradient(135deg,#7c3aed,#06b6d4);color:#fff;font-weight:600;padding:0.8rem 2rem;border-radius:9999px;text-decoration:none;font-size:0.95rem;">
+          View My Journey
+        </a>
+        <!-- ✏️ EDIT: Secondary button text and link (e.g. href="resume.pdf" to link a real file) -->
+        <a href="#contact"
+           style="border:1px solid rgba(167,139,250,0.3);color:#a78bfa;font-weight:600;padding:0.8rem 2rem;border-radius:9999px;text-decoration:none;font-size:0.95rem;transition:border-color 0.2s,color 0.2s;"
+           onmouseover="this.style.borderColor='rgba(167,139,250,0.7)';this.style.color='#c4b5fd'"
+           onmouseout="this.style.borderColor='rgba(167,139,250,0.3)';this.style.color='#a78bfa'">
+          Download CV
+        </a>
+      </div>
+
+      <!-- Animated scroll indicator -->
+      <div class="scroll-indicator fade-in" data-delay="500" style="margin-top:5rem;color:#334155;display:flex;flex-direction:column;align-items:center;gap:0.5rem;">
+        <span style="font-size:0.65rem;letter-spacing:0.25em;text-transform:uppercase;">Scroll</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ==============================================================
+       SECTION 2: ABOUT
+  ============================================================== -->
+  <section id="about" style="max-width:72rem;margin:0 auto;padding:6rem 1.5rem;border-top:1px solid rgba(99,102,241,0.1);">
+
+    <!-- Section header -->
+    <div class="fade-in" style="margin-bottom:4rem;">
+      <p class="section-label">Who I Am</p>
+      <!-- ✏️ EDIT: Section heading -->
+      <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:clamp(1.8rem,4vw,2.8rem);margin-top:0.5rem;">
+        About Me
+      </h2>
+    </div>
+
+    <!-- Two-column: photo + bio -->
+    <div style="display:grid;grid-template-columns:1fr;gap:3rem;align-items:center;" class="md:grid-cols-2">
+
+      <!-- Photo placeholder -->
+      <div class="fade-in" data-delay="0">
+        <div style="border-radius:1.25rem;overflow:hidden;aspect-ratio:4/5;max-width:380px;border:1px solid rgba(99,102,241,0.15);box-shadow:0 4px 60px rgba(124,58,237,0.1);">
+
+          <!-- ✏️ REPLACE: Swap the div below with an <img> tag pointing to your photo.
+               Example:  <img src="photo.jpg" alt="Alex Chen" style="width:100%;height:100%;object-fit:cover;">
+               Delete the entire inner div and span once you add your photo. -->
+          <div style="width:100%;height:100%;background:linear-gradient(135deg,#1e1b4b 0%,#0d1f3c 50%,#083344 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;">
+            <span style="font-size:5rem;">👤</span>
+            <span style="font-size:0.75rem;color:#334155;letter-spacing:0.15em;text-transform:uppercase;">Your Photo Here</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Bio text -->
+      <div class="fade-in" data-delay="100" style="display:flex;flex-direction:column;gap:1.2rem;">
+
+        <!-- ✏️ EDIT: Bio paragraph 1 -->
+        <p style="color:#94a3b8;line-height:1.85;">
+          I’m a Data & BI Analyst with <strong style="color:#e2e8f0;font-weight:500;">over 1.5 years of experience</strong> bridging market research, product management, and data-driven strategy. I specialize in turning complex market trends, sales data, and field feedback into actionable business insights.
+        </p>
+
+        <!-- ✏️ EDIT: Bio paragraph 2 -->
+        <p style="color:#94a3b8;line-height:1.85;">
+          My work spans multinational corporations like Samsung and KT&G, where I’ve built reporting workflows, analyzed distribution KPIs, and optimized product-market strategies. I’m passionate about data visualization, precision analytics, and continuous learning.
+        </p>
+
+        <!-- ✏️ EDIT: Bio paragraph 3 (optional — delete the whole <p> if you don't want it) -->
+        <p style="color:#94a3b8;line-height:1.85;">
+          When I'm not deep into data models or Excel sheets, you'll find me exploring multilingual literature, studying new languages (German, Persian), or keeping up with global market trends.
+        </p>
+
+        <!-- Stat row -->
+        <div style="display:flex;flex-wrap:wrap;gap:2rem;margin-top:1rem;">
+          <!-- ✏️ EDIT: Change the numbers and labels for each stat -->
+          <div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:2rem;line-height:1;">1.5+</div>
+            <div style="color:#475569;font-size:0.85rem;margin-top:0.2rem;">Years Experience</div>
+          </div>
+          <div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:2rem;line-height:1;">3</div>
+            <div style="color:#475569;font-size:0.85rem;margin-top:0.2rem;">Global Corporations</div>
+          </div>
+          <div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:2rem;line-height:1;">C1</div>
+            <div style="color:#475569;font-size:0.85rem;margin-top:0.2rem;">English & Korean</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ==============================================================
+       SECTION 3: SKILLS
+  ============================================================== -->
+  <section id="skills" style="max-width:72rem;margin:0 auto;padding:6rem 1.5rem;border-top:1px solid rgba(99,102,241,0.1);">
+
+    <!-- Section header -->
+    <div class="fade-in" style="margin-bottom:3rem;">
+      <p class="section-label">My Toolkit</p>
+      <!-- ✏️ EDIT: Skills section heading -->
+      <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:clamp(1.8rem,4vw,2.8rem);margin-top:0.5rem;">
+        Skills &amp; Technologies
+      </h2>
+    </div>
+
+    <!-- Skills by category -->
+    <!-- ✏️ EDIT: Each block below is a category.
+         To add a skill: copy a <span class="skill-pill ..."> and change the text.
+         To add a category: copy an entire <div class="fade-in"> block. -->
+
+    <div style="display:flex;flex-direction:column;gap:2.5rem;">
+
+      <!-- CATEGORY: Frontend -->
+      <div class="fade-in" data-delay="0">
+        <!-- ✏️ EDIT: Category label -->
+        <h3 style="font-size:0.7rem;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;color:#475569;margin-bottom:1rem;">ANALYTICS & DATA</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:0.625rem;">
+          <!-- ✏️ EDIT: Skill names -->
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">MS Excel</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">Power BI</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">Data Analysis</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">Market Research</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">SQL (Learning)</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">Financial Modeling</span>
+        </div>
+      </div>
+
+      <!-- CATEGORY: Backend -->
+      <div class="fade-in" data-delay="80">
+        <!-- ✏️ EDIT: Category label -->
+        <h3 style="font-size:0.7rem;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;color:#475569;margin-bottom:1rem;">BUSINESS & STRATEGY</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:0.625rem;">
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">Product Management</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">Competitive Analysis</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">KPI Tracking</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">Strategic Planning</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">Global Trade</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">Intercultural Communication</span>
+        </div>
+      </div>
+
+      <!-- CATEGORY: DevOps & Tools -->
+      <div class="fade-in" data-delay="160">
+        <!-- ✏️ EDIT: Category label -->
+        <h3 style="font-size:0.7rem;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;color:#475569;margin-bottom:1rem;">TOOLS & &amp; LANGUAGES</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:0.625rem;">
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">MS Powerpoint</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">MS Word</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">English (C1)</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">Korean (C1)</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">Russian (B1)</span>
+          <span class="skill-pill" style="padding:0.45rem 1rem;border-radius:9999px;font-size:0.875rem;font-weight:500;">Uzbek (Native)</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ==============================================================
+       SECTION 4: MILESTONES / TIMELINE
+       ➤ This section uses the "Growing Timeline Line" animation.
+  ============================================================== -->
+  <section id="milestones" style="max-width:72rem;margin:0 auto;padding:6rem 1.5rem;border-top:1px solid rgba(99,102,241,0.1);">
+
+    <!-- Section header -->
+    <div class="fade-in" style="margin-bottom:4rem;">
+      <p class="section-label">The Journey</p>
+      <!-- ✏️ EDIT: Milestones section heading -->
+      <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:clamp(1.8rem,4vw,2.8rem);margin-top:0.5rem;">
+        Career Milestones
+      </h2>
+    </div>
+
+    <!-- TIMELINE CONTAINER — do not remove the id attributes below -->
+    <div id="timeline-container" style="position:relative;padding-left:3rem;">
+
+      <!-- Background track line -->
+      <div id="timeline-track">
+        <!-- Glowing fill — height is driven by JS scroll position -->
+        <div id="timeline-fill"></div>
+      </div>
+
+      <!-- ===========================================================
+           ✏️ MILESTONE ITEMS — Edit, duplicate, or delete these blocks.
+           Each block = one entry on the timeline.
+           To add a milestone: copy ONE block (from "MILESTONE N" comment
+           to its closing </div>) and paste it before the last one.
+           Update year, title, company, and description inside.
+      =========================================================== -->
+
+      <!-- MILESTONE 1 -->
+      <div class="milestone-card fade-in" data-delay="0" style="position:relative;padding-bottom:3.5rem;">
+        <div class="milestone-dot"></div>
+        <!-- ✏️ EDIT: Year or date range -->
+        <span style="color:#a78bfa;font-size:0.78rem;font-weight:600;letter-spacing:0.1em;">2024</span>
+        <!-- ✏️ EDIT: Milestone title -->
+        <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:1.2rem;margin-top:0.25rem;">B.BA. International Business & Trade</h3>
+        <!-- ✏️ EDIT: Company / school / organization name -->
+        <p style="color:#06b6d4;font-size:0.875rem;font-weight:500;margin-top:0.2rem;">Inha University, Incheon</p>
+        <!-- ✏️ EDIT: Description of this milestone (2-3 sentences) -->
+        <p style="color:#475569;font-size:0.9rem;line-height:1.8;max-width:30rem;margin-top:0.6rem;">
+          Graduated with honors, focused on collaboration with engineering departments. Won the departmental award for best senior capstone project.
+        </p>
+      </div>
+
+      <!-- MILESTONE 2 -->
+      <div class="milestone-card fade-in" data-delay="80" style="position:relative;padding-bottom:3.5rem;">
+        <div class="milestone-dot"></div>
+        <!-- ✏️ EDIT: Year or date range -->
+        <span style="color:#a78bfa;font-size:0.78rem;font-weight:600;letter-spacing:0.1em;">2024 — 2025</span>
+        <!-- ✏️ EDIT: Milestone title -->
+        <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:1.2rem;margin-top:0.25rem;">Product Manager</h3>
+        <!-- ✏️ EDIT: Company / location -->
+        <p style="color:#06b6d4;font-size:0.875rem;font-weight:500;margin-top:0.2rem;">L&K Biomed · Seoul</p>
+        <!-- ✏️ EDIT: Description -->
+        <p style="color:#475569;font-size:0.9rem;line-height:1.8;max-width:30rem;margin-top:0.6rem;">
+          Conducted market, competitor, and customer data analysis to author strategic reports. Maintained customer request data systems, monitored request statuses, and delivered data-backed recommendations.
+        </p>
+      </div>
+
+      <!-- MILESTONE 3 -->
+      <div class="milestone-card fade-in" data-delay="160" style="position:relative;padding-bottom:3.5rem;">
+        <div class="milestone-dot"></div>
+        <!-- ✏️ EDIT: Year or date range -->
+        <span style="color:#a78bfa;font-size:0.78rem;font-weight:600;letter-spacing:0.1em;">Apr 2026 — Aug 2026</span>
+        <!-- ✏️ EDIT: Milestone title -->
+        <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:1.2rem;margin-top:0.25rem;">Marketing Coordinator</h3>
+        <!-- ✏️ EDIT: Company / location -->
+        <p style="color:#06b6d4;font-size:0.875rem;font-weight:500;margin-top:0.2rem;">KT&G · Tashkent</p>
+        <!-- ✏️ EDIT: Description -->
+        <p style="color:#475569;font-size:0.9rem;line-height:1.8;max-width:30rem;margin-top:0.6rem;">
+          Tracked and analyzed marketing activity KPIs across distributors and points of sale. Managed incentive program data in Excel and ensured strict compliance with standards using field data reports.
+        </p>
+      </div>
+
+      <!-- MILESTONE 4 -->
+      <div class="milestone-card fade-in" data-delay="240" style="position:relative;padding-bottom:3.5rem;">
+        <div class="milestone-dot"></div>
+        <!-- ✏️ EDIT: Year or date range -->
+        <span style="color:#a78bfa;font-size:0.78rem;font-weight:600;letter-spacing:0.1em;">Aug 2026 - Present</span>
+        <!-- ✏️ EDIT: Milestone title -->
+        <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:1.2rem;margin-top:0.25rem;">Product Manager</h3>
+        <!-- ✏️ EDIT: Company / type -->
+        <p style="color:#06b6d4;font-size:0.875rem;font-weight:500;margin-top:0.2rem;">Samsung Electronics · Tashkent</p>
+        <!-- ✏️ EDIT: Description -->
+        <p style="color:#475569;font-size:0.9rem;line-height:1.8;max-width:30rem;margin-top:0.6rem;">
+          Researching and monitoring market trends, target audiences, and competitor movements. Developing product and promotional strategies, and synthesizing feedback from field staff to rapidly adjust business tactics.
+        </p>
+      </div>
+
+    </div><!-- END #timeline-container -->
+  </section>
+
+
+  <!-- ==============================================================
+       SECTION 5: PROJECTS
+  ============================================================== -->
+  <section id="projects" style="max-width:72rem;margin:0 auto;padding:6rem 1.5rem;border-top:1px solid rgba(99,102,241,0.1);">
+
+    <!-- Section header -->
+    <div class="fade-in" style="margin-bottom:3rem;">
+      <p class="section-label">Selected Work</p>
+      <!-- ✏️ EDIT: Projects section heading -->
+      <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:clamp(1.8rem,4vw,2.8rem);margin-top:0.5rem;">
+        Projects
+      </h2>
+    </div>
+
+    <!-- Project cards grid -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:1.5rem;">
+
+      <!-- ===========================================================
+           ✏️ PROJECT CARDS — Edit, duplicate, or delete these.
+           To add a project: copy one card block and update the content.
+      =========================================================== -->
+
+      <!-- PROJECT CARD 1 Hidden -->
+      <div class="project-card fade-in" data-delay="0" style ="display: none;">
+        <!-- ✏️ REPLACE: Swap the colored block with a real screenshot.
+             Example: <img src="project1.png" alt="FeedbackLoop screenshot" style="width:100%;height:180px;object-fit:cover;">
+             The emoji below is just a placeholder. -->
+        <div style="height:180px;background:linear-gradient(135deg,#1e1b4b,#083344);display:flex;align-items:center;justify-content:center;font-size:3.5rem;">🌐</div>
+        <div style="padding:1.5rem;">
+          <!-- ✏️ EDIT: Project title -->
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:1.1rem;">FeedbackLoop</h3>
+          <!-- ✏️ EDIT: One-sentence description -->
+          <p style="color:#475569;font-size:0.875rem;line-height:1.75;margin-top:0.5rem;">
+            Real-time design feedback for teams — annotate screenshots, record video clips, and track revisions in one thread.
+          </p>
+          <!-- ✏️ EDIT: Tech tags used. Duplicate <span> tags to add more. -->
+          <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:1rem;">
+            <span style="background:rgba(124,58,237,0.15);color:#a78bfa;font-size:0.75rem;font-weight:500;padding:0.2rem 0.6rem;border-radius:0.35rem;">Next.js</span>
+            <span style="background:rgba(124,58,237,0.15);color:#a78bfa;font-size:0.75rem;font-weight:500;padding:0.2rem 0.6rem;border-radius:0.35rem;">WebSockets</span>
+            <span style="background:rgba(124,58,237,0.15);color:#a78bfa;font-size:0.75rem;font-weight:500;padding:0.2rem 0.6rem;border-radius:0.35rem;">PostgreSQL</span>
+          </div>
+          <!-- ✏️ EDIT: Project links — update the href="" to real URLs -->
+          <div style="display:flex;gap:1rem;margin-top:1.25rem;">
+            <a href="#" style="color:#a78bfa;font-size:0.875rem;font-weight:600;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#c4b5fd'" onmouseout="this.style.color='#a78bfa'">Live Site →</a>
+            <a href="#" style="color:#334155;font-size:0.875rem;font-weight:500;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#64748b'" onmouseout="this.style.color='#334155'">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROJECT CARD 2 -->
+      <div class="project-card fade-in" data-delay="100">
+        <div style="height:180px;background:linear-gradient(135deg,#083344,#0d1f3c);display:flex;align-items:center;justify-content:center;font-size:3.5rem;">📊</div>
+        <div style="padding:1.5rem;">
+          <!-- ✏️ EDIT: Project title -->
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:1.1rem;">Data Jobs Dashboard</h3>
+          <!-- ✏️ EDIT: Description -->
+          <p style="color:#475569;font-size:0.875rem;line-height:1.75;margin-top:0.5rem;">
+            Analytics dashboard for data job market — historical charts, income analysis, and trend visualizations.
+          </p>
+          <!-- ✏️ EDIT: Tech tags -->
+          <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:1rem;">
+            <span style="background:rgba(6,182,212,0.15);color:#67e8f9;font-size:0.75rem;font-weight:500;padding:0.2rem 0.6rem;border-radius:0.35rem;">Power BI</span>
+            <span style="background:rgba(6,182,212,0.15);color:#67e8f9;font-size:0.75rem;font-weight:500;padding:0.2rem 0.6rem;border-radius:0.35rem;">SQL</span>
+            <span style="background:rgba(6,182,212,0.15);color:#67e8f9;font-size:0.75rem;font-weight:500;padding:0.2rem 0.6rem;border-radius:0.35rem;">R</span>
+          </div>
+          <!-- ✏️ EDIT: Project links -->
+          <div style="display:flex;gap:1rem;margin-top:1.25rem;">
+            <a href= Dashboard.mp4 target="_blank" style="color:#a78bfa;font-size:0.875rem;font-weight:600;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#c4b5fd'" onmouseout="this.style.color='#a78bfa'">View Dashboard →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROJECT CARD 3 Hidden -->
+      <div class="project-card fade-in" data-delay="200" style="display: none;">
+        <div style="height:180px;background:linear-gradient(135deg,#052e16,#083344);display:flex;align-items:center;justify-content:center;font-size:3.5rem;">🤖</div>
+        <div style="padding:1.5rem;">
+          <!-- ✏️ EDIT: Project title -->
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:1.1rem;">Aria AI Assistant</h3>
+          <!-- ✏️ EDIT: Description -->
+          <p style="color:#475569;font-size:0.875rem;line-height:1.75;margin-top:0.5rem;">
+            Voice-and-text AI assistant with persistent memory and customizable personas, built on top of large language models.
+          </p>
+          <!-- ✏️ EDIT: Tech tags -->
+          <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:1rem;">
+            <span style="background:rgba(16,185,129,0.15);color:#6ee7b7;font-size:0.75rem;font-weight:500;padding:0.2rem 0.6rem;border-radius:0.35rem;">TypeScript</span>
+            <span style="background:rgba(16,185,129,0.15);color:#6ee7b7;font-size:0.75rem;font-weight:500;padding:0.2rem 0.6rem;border-radius:0.35rem;">LangChain</span>
+            <span style="background:rgba(16,185,129,0.15);color:#6ee7b7;font-size:0.75rem;font-weight:500;padding:0.2rem 0.6rem;border-radius:0.35rem;">Redis</span>
+          </div>
+          <!-- ✏️ EDIT: Project links -->
+          <div style="display:flex;gap:1rem;margin-top:1.25rem;">
+            <a href= Dashboard.mp4 target="_blank" style="color:#a78bfa;font-size:0.875rem;font-weight:600;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#c4b5fd'" onmouseout="this.style.color='#a78bfa'">View Dashboard →</a>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- END project grid -->
+  </section>
+
+
+  <!-- ==============================================================
+       SECTION 6: CONTACT
+  ============================================================== -->
+  <section id="contact" style="max-width:72rem;margin:0 auto;padding:6rem 1.5rem;border-top:1px solid rgba(99,102,241,0.1);">
+
+    <!-- Section header -->
+    <div class="fade-in" style="text-align:center;margin-bottom:3.5rem;max-width:40rem;margin-left:auto;margin-right:auto;">
+      <p class="section-label">Get In Touch</p>
+      <!-- ✏️ EDIT: Contact section heading -->
+      <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:clamp(1.8rem,4vw,2.8rem);margin-top:0.5rem;">
+        Let's Work Together
+      </h2>
+      <!-- ✏️ EDIT: Contact section sub-copy -->
+      <p style="color:#475569;margin-top:1rem;line-height:1.8;">
+        Have a data analytics role, business intelligence project, or want to say hi? I'm currently open to full-time Data & BI Analyst opportunities and strategic consulting. Drop me a message below or email me directly at shomamatovsherzod@gmail.com.
+      </p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr;gap:3rem;max-width:52rem;margin:0 auto;" class="md:grid-cols-2">
+
+      <!-- Contact Form -->
+      <div class="fade-in" data-delay="0">
+        <!-- NOTE FOR NON-CODERS: This form shows a "thank you" message when submitted.
+             To make it send REAL emails, sign up free at formspree.io, create a form,
+             then replace <div id="contact-form"> with:
+             <form action="https://formspree.io/f/YOUR_ID" method="POST"> ... </form> -->
+        <div id="contact-form" style="display:flex;flex-direction:column;gap:1rem;">
+          <!-- ✏️ EDIT: Form field placeholder text -->
+          <input type="text"  id="cf-name"    placeholder="Your Name"           class="form-input">
+          <input type="email" id="cf-email"   placeholder="your@email.com"      class="form-input">
+          <input type="text"  id="cf-subject" placeholder="Subject"             class="form-input">
+          <textarea           id="cf-message" placeholder="Tell me about your project..." rows="4" class="form-input" style="resize:none;"></textarea>
+          <!-- ✏️ EDIT: Submit button text -->
+          <button id="cf-submit" class="glow-btn"
+                  style="background:linear-gradient(135deg,#7c3aed,#06b6d4);color:#fff;font-weight:600;font-size:0.95rem;padding:0.875rem 1.5rem;border-radius:0.75rem;border:none;cursor:pointer;width:100%;">
+            Send Message ✦
+          </button>
+          <p id="cf-thanks" style="display:none;text-align:center;color:#a78bfa;font-size:0.9rem;padding:0.75rem;background:rgba(124,58,237,0.08);border-radius:0.75rem;border:1px solid rgba(124,58,237,0.2);">
+            ✓ Message sent — I'll be in touch soon!
+          </p>
+        </div>
+      </div>
+
+      <!-- Social / Contact links -->
+      <div class="fade-in" data-delay="120" style="display:flex;flex-direction:column;gap:0.875rem;justify-content:center;">
+
+        <!-- ✏️ EDIT: Your email address (update both the href and the display text) -->
+        <a href="mailto:alex@example.com" class="contact-link">
+          <div style="width:2.75rem;height:2.75rem;border-radius:0.75rem;background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          </div>
+          <div>
+            <div style="font-size:0.7rem;color:#334155;text-transform:uppercase;letter-spacing:0.15em;font-weight:600;">Email</div>
+            <div style="color:#e2e8f0;font-weight:500;font-size:0.9rem;margin-top:0.1rem;">shomamatovsherzod@gmail.com</div>
+          </div>
+        </a>
+
+        <!-- ✏️ EDIT: Your LinkedIn URL (update href and display text) -->
+        <a href="https://linkedin.com/in/yourprofile" target="_blank" rel="noopener" class="contact-link">
+          <div style="width:2.75rem;height:2.75rem;border-radius:0.75rem;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#67e8f9"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+          </div>
+          <div>
+            <div style="font-size:0.7rem;color:#334155;text-transform:uppercase;letter-spacing:0.15em;font-weight:600;">LinkedIn</div>
+            <!-- ✏️ EDIT: LinkedIn display URL -->
+            <div style="color:#e2e8f0;font-weight:500;font-size:0.9rem;margin-top:0.1rem;">linkedin.com/in/sherzodshomamatov</div>
+          </div>
+        </a>
+
+        <!-- ✏️ EDIT: Your GitHub URL (update href and display text) -->
+        <a href="https://github.com/yourusername" target="_blank" rel="noopener" class="contact-link">
+          <div style="width:2.75rem;height:2.75rem;border-radius:0.75rem;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#6ee7b7"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+          </div>
+          <div>
+            <div style="font-size:0.7rem;color:#334155;text-transform:uppercase;letter-spacing:0.15em;font-weight:600;">GitHub</div>
+            <!-- ✏️ EDIT: GitHub display URL -->
+            <div style="color:#e2e8f0;font-weight:500;font-size:0.9rem;margin-top:0.1rem;">github.com/boburzod</div>
+          </div>
+        </a>
+
+        <!-- ✏️ ADD more links here (duplicate the block above and change icon/href/labels) -->
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ==============================================================
+       FOOTER
+  ============================================================== -->
+  <footer style="max-width:72rem;margin:0 auto;padding:2rem 1.5rem;border-top:1px solid rgba(99,102,241,0.08);">
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;">
+      <!-- ✏️ EDIT: Footer left text -->
+      <p style="color:#1e293b;font-size:0.82rem;">© 2024 Alex Chen. Built with care in San Francisco.</p>
+      <!-- ✏️ EDIT: Footer right text -->
+      <p style="color:#1e293b;font-size:0.82rem;">Designed &amp; coded from scratch ✦</p>
+    </div>
+  </footer>
+
+
+</div><!-- END main content wrapper -->
+
+
+<!-- ================================================================
+     ⚠️  ANIMATION JAVASCRIPT  ⚠️
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     DO NOT EDIT BELOW THIS LINE unless you know what you're doing.
+     This section powers ALL three scroll animations:
+       1. Aurora background shifting
+       2. Growing timeline line
+       3. Scroll-in fade reveals
+     Editing here can break the page's visual effects.
+================================================================ -->
+<script>
+(function () {
+  'use strict';
+
+  /* ──────────────────────────────────────────────────────────────────
+     ANIMATION 1 — AURORA BACKGROUND
+     Shifts four radial-gradient blobs in position and opacity as the
+     user scrolls. All transforms use `requestAnimationFrame` so they
+     are never blocking.
+  ────────────────────────────────────────────────────────────────── */
+  var a1 = document.getElementById('aurora-1');
+  var a2 = document.getElementById('aurora-2');
+  var a3 = document.getElementById('aurora-3');
+  var a4 = document.getElementById('aurora-4');
+
+  function renderAurora(p) {
+    // p = scroll progress 0 (top) → 1 (bottom)
+    if (a1) { a1.style.transform = 'translateY(' + (p * 320) + 'px) scale(' + (1 + p * 0.45) + ')'; a1.style.opacity = (0.22 + p * 0.18).toFixed(2); }
+    if (a2) { a2.style.transform = 'translateY(' + (-p * 220) + 'px) translateX(' + (p * 90) + 'px) scale(' + (1.1 - p * 0.12) + ')'; a2.style.opacity = (0.18 - p * 0.06).toFixed(2); }
+    if (a3) { a3.style.transform = 'translateY(' + (-p * 180) + 'px) scale(' + (0.85 + p * 0.35) + ')'; a3.style.opacity = (0.14 + p * 0.22).toFixed(2); }
+    if (a4) { a4.style.transform = 'translateY(' + (p * 140) + 'px) translateX(' + (-p * 70) + 'px)'; a4.style.opacity = (0.10 + p * 0.12).toFixed(2); }
+  }
+
+  /* ──────────────────────────────────────────────────────────────────
+     ANIMATION 2 — GROWING TIMELINE LINE
+     Measures the timeline container's position in the viewport and
+     expands the glowing `#timeline-fill` element proportionally.
+     Also lights up each milestone's dot when its row passes the
+     scroll trigger point.
+  ────────────────────────────────────────────────────────────────── */
+  var tlContainer = document.getElementById('timeline-container');
+  var tlFill      = document.getElementById('timeline-fill');
+  var tlDots      = document.querySelectorAll('.milestone-dot');
+
+  function renderTimeline() {
+    if (!tlContainer || !tlFill) return;
+
+    var rect  = tlContainer.getBoundingClientRect();
+    var viewH = window.innerHeight;
+
+    // Start filling when container enters at 85% down, finish when its bottom hits 30% down
+    var start    = viewH * 0.85;
+    var fillZone = rect.height + start - viewH * 0.30;
+    var progress = fillZone > 0 ? Math.max(0, Math.min(1, (start - rect.top) / fillZone)) : 0;
+
+    tlFill.style.height = (progress * 100) + '%';
+
+    // Light up each dot when it scrolls past 72% of the viewport
+    tlDots.forEach(function (dot) {
+      var dr = dot.getBoundingClientRect();
+      if (dr.top < viewH * 0.72) {
+        dot.classList.add('is-lit');
+      }
+    });
+  }
+
+  /* ──────────────────────────────────────────────────────────────────
+     ANIMATION 3 — SCROLL-IN FADE
+     IntersectionObserver stamps `.is-visible` on any `.fade-in`
+     element when it enters the viewport. CSS handles the transition.
+     Each element can carry a `data-delay="ms"` attribute for stagger.
+  ────────────────────────────────────────────────────────────────── */
+  var fadeObserver = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        var el    = entry.target;
+        var delay = parseInt(el.getAttribute('data-delay') || '0', 10);
+        setTimeout(function () { el.classList.add('is-visible'); }, delay);
+        fadeObserver.unobserve(el);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
+
+  document.querySelectorAll('.fade-in').forEach(function (el) {
+    fadeObserver.observe(el);
+  });
+
+  /* ──────────────────────────────────────────────────────────────────
+     ANIMATION 4 — SMART NAVBAR
+     Dims slightly on scroll, hides on scroll-down, reveals on scroll-up
+     (common "smart header" UX pattern).
+  ────────────────────────────────────────────────────────────────── */
+  var navbar    = document.getElementById('navbar');
+  var lastY     = 0;
+
+  function renderNavbar() {
+    var y = window.scrollY;
+    if (!navbar) return;
+    if (y > 80) {
+      navbar.style.boxShadow = '0 4px 40px rgba(0,0,0,0.55)';
+    } else {
+      navbar.style.boxShadow = 'none';
+    }
+    if (y > lastY + 6 && y > 180) {
+      navbar.style.transform = 'translateY(-100%)';
+    } else if (y < lastY - 6) {
+      navbar.style.transform = 'translateY(0)';
+    }
+    lastY = y;
+  }
+
+  /* ──────────────────────────────────────────────────────────────────
+     UNIFIED SCROLL HANDLER
+     All per-frame work is batched in a single requestAnimationFrame
+     call to avoid layout thrashing.
+  ────────────────────────────────────────────────────────────────── */
+  var ticking = false;
+
+  function onScroll() {
+    if (!ticking) {
+      window.requestAnimationFrame(function () {
+        var maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+        var p = Math.min(window.scrollY / maxScroll, 1);
+        renderAurora(p);
+        renderTimeline();
+        renderNavbar();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  /* ──────────────────────────────────────────────────────────────────
+     CONTACT FORM — simple client-side demo
+     Shows a thank-you message on submit. Replace with Formspree or
+     your own backend endpoint for real email delivery.
+  ────────────────────────────────────────────────────────────────── */
+  var cfSubmit = document.getElementById('cf-submit');
+  var cfThanks = document.getElementById('cf-thanks');
+
+  if (cfSubmit) {
+    cfSubmit.addEventListener('click', function () {
+      var name = (document.getElementById('cf-name')    || {}).value || '';
+      var mail = (document.getElementById('cf-email')   || {}).value || '';
+      if (!name.trim() || !mail.trim()) {
+        cfSubmit.textContent = 'Please fill in Name & Email';
+        setTimeout(function () { cfSubmit.textContent = 'Send Message ✦'; }, 2400);
+        return;
+      }
+      cfSubmit.style.opacity = '0.5';
+      cfSubmit.disabled = true;
+      setTimeout(function () {
+        if (cfThanks) { cfThanks.style.display = 'block'; }
+        cfSubmit.style.display = 'none';
+      }, 600);
+    });
+  }
+
+  /* ──────────────────────────────────────────────────────────────────
+     RESPONSIVE NAV LINKS
+     Shows the nav link list on wider screens; hides on mobile.
+  ────────────────────────────────────────────────────────────────── */
+  function applyNavVisibility() {
+    var links = document.getElementById('nav-links');
+    if (!links) return;
+    links.style.display = window.innerWidth >= 768 ? 'flex' : 'none';
+    links.style.alignItems = 'center';
+    links.style.gap = '2rem';
+  }
+  window.addEventListener('resize', applyNavVisibility);
+
+  /* ──────────────────────────────────────────────────────────────────
+     INIT — run everything once on page load
+  ────────────────────────────────────────────────────────────────── */
+  renderAurora(0);
+  renderTimeline();
+  applyNavVisibility();
+
+}());
+</script>
+
+</body>
+</html>
